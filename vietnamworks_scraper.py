@@ -32,11 +32,15 @@ def save_or_update_json(new_data, file_path=JSON_PATH):
     else:
         old_data = []
     old_urls = {item.get("Url") for item in old_data if isinstance(item, dict) and item.get("Url")}
-    fresh_data = [job for job in new_data if job.get("Url") not in old_urls]
+    fresh_data = new_data
     if not fresh_data:
         print("Không có job mới.")
-        return
-    updated = fresh_data + old_data
+    all_data = old_data + new_data
+
+    # remove duplicate theo Url
+    unique = {item["Url"]: item for item in all_data if item.get("Url")}
+
+    updated = list(unique.values())
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(updated, f, ensure_ascii=False, indent=2)
     print(f"Đã cập nhật {file_path}: tổng {len(updated)} job.")
@@ -173,13 +177,11 @@ def main():
         with open(JSON_PATH, "r", encoding="utf-8") as f:
             old_data = json.load(f)
             old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-    for page in range(20, 40):
+    for page in range(1, 40):
         page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
         print(f"ĐANG CÀO TRANG {page}")
         job_list = get_job_links(driver, wait, page_url)
         for job_url, location in job_list:
-            if job_url in old_urls:
-                continue
             job_info = get_job_info(driver, job_url)
             if not job_info.get("Company_url"):
                 continue
