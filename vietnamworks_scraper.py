@@ -73,49 +73,33 @@ def ensure_driver_alive(driver):
 def get_job_links(driver, wait, start_url, limit=9999):
     driver = ensure_driver_alive(driver)
     driver.get(start_url)
-    time.sleep(7)
 
-    # Scroll để load dữ liệu
-    last_height = driver.execute_script("return document.body.scrollHeight")
+    time.sleep(5)
 
-    while True:
+    # scroll nhiều lần để load job
+    for _ in range(8):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(random.uniform(2, 3))
+        time.sleep(2)
 
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            break
-        last_height = new_height
-
-    # 🔥 Selector chuẩn (job VietnamWorks có '-jv')
-    job_blocks = driver.find_elements(By.XPATH, "//a[contains(@href, '-jv')]")
+    # 👉 lấy tất cả link a
+    links = driver.find_elements(By.TAG_NAME, "a")
 
     job_list = []
     seen = set()
 
-    for block in job_blocks:
+    for link in links:
         try:
-            job_url = block.get_attribute("href")
+            href = link.get_attribute("href")
 
-            # lọc link hợp lệ
-            if not job_url:
-                continue
-            if "-jv" not in job_url:
-                continue
-            if job_url in seen:
-                continue
-
-            seen.add(job_url)
-
-            job_list.append((job_url, None))  # location bỏ tạm
-
-            if len(job_list) >= limit:
-                break
-
+            # 👉 filter job bằng từ khóa "job" hoặc "jv"
+            if href and ("job" in href or "jv" in href):
+                if href not in seen:
+                    seen.add(href)
+                    job_list.append((href, None))
         except:
             continue
 
-    print(f"👉 Lấy được {len(job_list)} job")
+    print(f"👉 Lấy được {len(job_list)} link")
 
     return job_list
 def get_job_info(driver, job_url):
