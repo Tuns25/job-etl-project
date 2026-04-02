@@ -47,9 +47,11 @@ def init_uc_driver(headless=False, retries=3):
             for opt in CHROME_OPTIONS_LIST:
                 options.add_argument(opt)
             options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
             if headless:
                 options.add_argument("--headless")
-            driver = uc.Chrome(options=options)
+            driver = uc.Chrome(options=options, version_main=146)
             driver.maximize_window()
             wait = WebDriverWait(driver, 20)
             print("Chrome driver khởi tạo")
