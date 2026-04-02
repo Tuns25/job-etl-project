@@ -1,9 +1,5 @@
-2026/04/02-15:40:21.380 64ac Reusing MANIFEST D:\BCTN\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
-2026/04/02-15:40:21.385 64ac Recovering log #3
-2026/04/02-15:40:21.387 64ac Reusing old log D:\BCTN\chrome_profile\Default\Local Storage\leveldb/000003.log 
-2026/04/02-15:42:22.577 a80 Level-0 table #5: started
-2026/04/02-15:42:22.581 a80 Level-0 table #5: 19832 bytes OK
-2026/04/02-15:42:22.582 a80 Delete type=0 #3
-2026/04/02-15:43:22.571 a80 Level-0 table #7: started
-2026/04/02-15:43:22.574 a80 Level-0 table #7: 18112 bytes OK
-2026/04/02-15:43:22.575 a80 Delete type=0 #4
+2026/04/02-15:46:27.047 7428 Reusing MANIFEST D:\BCTN\chrome_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/04/02-15:46:27.054 7428 Recovering log #6
+2026/04/02-15:46:27.054 7428 Level-0 table #9: started
+2026/04/02-15:46:27.057 7428 Level-0 table #9: 18214 bytes OK
+2026/04/02-15:46:27.060 7428 Delete type=0 #6

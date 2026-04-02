@@ -1,2 +1,3 @@
-2026/04/02-14:56:00.782 6bbc Creating DB D:\BCTN\chrome_profile\Default\Site Characteristics Database since it was missing.
-2026/04/02-14:56:00.822 6bbc Reusing MANIFEST D:\BCTN\chrome_profile\Default\Site Characteristics Database/MANIFEST-000001
+2026/04/02-15:40:21.178 8bf8 Reusing MANIFEST D:\BCTN\chrome_profile\Default\Site Characteristics Database/MANIFEST-000001
+2026/04/02-15:40:21.179 8bf8 Recovering log #3
+2026/04/02-15:40:21.179 8bf8 Reusing old log D:\BCTN\chrome_profile\Default\Site Characteristics Database/000003.log 
