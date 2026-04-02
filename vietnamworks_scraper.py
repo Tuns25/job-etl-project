@@ -171,7 +171,7 @@ def main():
         with open(JSON_PATH, "r", encoding="utf-8") as f:
             old_data = json.load(f)
             old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-    for page in range(1,5):
+    for page in range(1,4):
         page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
         print(f"ĐANG CÀO TRANG {page}")
         job_list = get_job_links(driver, wait, page_url)
