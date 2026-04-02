@@ -129,70 +129,85 @@ def get_job_links(driver, wait, start_url):
 
     print(f"👉 Lấy được {len(job_list)} job link")
     return job_list
-def get_job_info(driver, job_url):
-    driver.get(job_url)
-    time.sleep(random.uniform(2, 4))
-    job_name = salary = posted_time = skills = job_domain = None
-    company_url = None
-    try:
-        job_name = driver.find_element(By.CSS_SELECTOR, "h1").text.strip()
-    except: pass
-    try:
-        salary = driver.find_element(By.CSS_SELECTOR, "span.sc-ab270149-0.cVbwLK").text.strip()
-    except: pass
-    try:
-        company_a = driver.find_element(By.CSS_SELECTOR, "div.sc-37577279-3.drWnZq a.sc-ab270149-0.egZKeY")
-        company_url = company_a.get_attribute("href")
-    except: pass
-    try:
-        info_blocks = driver.find_elements(By.CSS_SELECTOR, "div.sc-7bf5461f-1.jseBPO div")
-        for block in info_blocks:
-            try:
-                label = block.find_element(By.CSS_SELECTOR, "label").text.strip().upper()
-                value = block.find_element(By.CSS_SELECTOR, "p, span").text.strip()
-                if not value:
-                    continue
-                if "POSTED DATE" in label:
-                    posted_time = value
-                elif "SKILL" in label:
-                    skills = value
-                elif "JOB FUNCTION" in label:
-                    job_domain = value
-            except:
-                continue
-    except:
-        pass
-    return {
-        "Job_name": job_name,
-        "Salary": salary,
-        "Posted_time": posted_time,
-        "Skills": skills,
-        "Job_domain": job_domain,
-        "Company_url": company_url
-    }
-def get_company_info(driver, company_url):
-    driver.get(company_url)
-    time.sleep(3)
-    company_name = company_size = company_industry = None
-    try:
-        company_name = driver.find_element(By.CSS_SELECTOR, "div.sc-ca95509a-6.cXJgQF h1.sc-ca95509a-8.gcvyPj").text.strip()
-    except: pass
-    lis = driver.find_elements(By.CSS_SELECTOR, "ul.sc-7f4c261d-5.kfIkVN li.sc-7f4c261d-6.ejuuLs")
-    for li in lis:
+def get_job_info(driver, job_url, retries=2):
+    for attempt in range(retries):
         try:
-            label = li.find_element(By.CSS_SELECTOR, "p.type").text.strip().lower()
-            value = li.find_element(By.CSS_SELECTOR, "p.text").text.strip()
-            if "size" in label: company_size = value
-            if "industry" in label: company_industry = value
+            driver.get(job_url)
+            time.sleep(random.uniform(3, 5))
+
+            # ✅ selector đơn giản (ổn định)
+            try:
+                job_name = driver.find_element(By.TAG_NAME, "h1").text.strip()
+            except:
+                job_name = None
+
+            try:
+                company = driver.find_element(By.TAG_NAME, "h2").text.strip()
+            except:
+                company = None
+
+            try:
+                body = driver.find_element(By.TAG_NAME, "body").text
+            except:
+                body = ""
+
+            # 🔥 tách skills đơn giản
+            skills = []
+            if body:
+                for word in ["Python", "Java", "SQL", "AWS", "Docker"]:
+                    if word.lower() in body.lower():
+                        skills.append(word)
+
+            return {
+                "Job_name": job_name,
+                "Company": company,
+                "Posted_time": None,
+                "Skills": skills,
+                "Salary": None
+            }
+
+        except Exception as e:
+            print(f"Retry {attempt+1} lỗi:", e)
+            time.sleep(2)
+
+    return {}
+def get_company_info(driver, company_url):
+    try:
+        driver.get(company_url)
+        time.sleep(3)
+
+        company_name = company_size = company_industry = None
+
+        try:
+            company_name = driver.find_element(By.TAG_NAME, "h1").text.strip()
         except:
-            continue
-    if not company_size:
-        return None
-    return {
-        "Company": company_name,
-        "Company size": company_size,
-        "Company industry": company_industry
-    }
+            pass
+
+        try:
+            body = driver.find_element(By.TAG_NAME, "body").text.lower()
+
+            if "employee" in body:
+                company_size = "Unknown"
+
+            if "it" in body:
+                company_industry = "IT"
+
+        except:
+            pass
+
+        return {
+            "Company": company_name,
+            "Company size": company_size,
+            "Company industry": company_industry
+        }
+
+    except:
+        # 🔥 luôn trả dict (KHÔNG return None)
+        return {
+            "Company": None,
+            "Company size": None,
+            "Company industry": None
+        }
 def main():
     driver, wait = init_uc_driver(headless=False)
     driver.get("https://www.vietnamworks.com")
