@@ -48,20 +48,38 @@ def init_uc_driver(headless=False, retries=3):
     for attempt in range(1, retries + 1):
         try:
             options = uc.ChromeOptions()
+
             for opt in CHROME_OPTIONS_LIST:
                 options.add_argument(opt)
+
             options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+
+            # 🔥 ANTI-BOT
+            options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
+
+            # 🔥 PROFILE (LOGIN)
+            options.add_argument(r"--user-data-dir=D:\BCTN\chrome_profile")
+
+            # 🔥 UI
+            options.add_argument("--start-maximized")
+
+            # ❗ chỉ dùng khi cần
             if headless:
-                options.add_argument("--headless")
+                options.add_argument("--headless=new")
+
             driver = uc.Chrome(options=options, version_main=146)
-            driver.maximize_window()
+
             wait = WebDriverWait(driver, 20)
+
             print("Chrome driver khởi tạo")
             return driver, wait
-        except:
+
+        except Exception as e:
+            print(f"Lỗi init driver: {e}")
             time.sleep(3)
+
     raise RuntimeError("Không thể khởi tạo driver")
 def ensure_driver_alive(driver):
     try:
@@ -70,18 +88,26 @@ def ensure_driver_alive(driver):
     except:
         driver, _ = init_uc_driver(headless=False)
         return driver
-def get_job_links(driver, wait, start_url, limit=9999):
+def get_job_links(driver, wait, start_url):
     driver = ensure_driver_alive(driver)
     driver.get(start_url)
 
+    print("👉 Đợi trang load...")
+
     time.sleep(5)
 
-    # scroll nhiều lần để load job
-    for _ in range(8):
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(2)
+    # scroll nhiều lần (simulate user)
+    for _ in range(10):
+        driver.execute_script("window.scrollBy(0, 800);")
+        time.sleep(random.uniform(2, 4))
 
-    # 👉 lấy tất cả link a
+    # 🔥 CHỜ DOM THẬT (rất quan trọng)
+    try:
+        wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "a")) > 50)
+    except:
+        print("⚠️ Trang load không đủ element")
+
+    # lấy tất cả link
     links = driver.find_elements(By.TAG_NAME, "a")
 
     job_list = []
@@ -91,16 +117,17 @@ def get_job_links(driver, wait, start_url, limit=9999):
         try:
             href = link.get_attribute("href")
 
-            # 👉 filter job bằng từ khóa "job" hoặc "jv"
-            if href and ("job" in href or "jv" in href):
+            # 🔥 filter job thật
+            if href and ("vietnamworks.com" in href) and ("job" in href or "-jv" in href):
+
                 if href not in seen:
                     seen.add(href)
                     job_list.append((href, None))
+
         except:
             continue
 
-    print(f"👉 Lấy được {len(job_list)} link")
-
+    print(f"👉 Lấy được {len(job_list)} job link")
     return job_list
 def get_job_info(driver, job_url):
     driver.get(job_url)
@@ -168,6 +195,8 @@ def get_company_info(driver, company_url):
     }
 def main():
     driver, wait = init_uc_driver(headless=False)
+    driver.get("https://www.vietnamworks.com")
+    input("👉 Login xong nhấn Enter...")
     results = []
     old_urls = set()
 
