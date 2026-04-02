@@ -74,35 +74,49 @@ def get_job_links(driver, wait, start_url, limit=9999):
     driver = ensure_driver_alive(driver)
     driver.get(start_url)
     time.sleep(7)
-    seen_count = 0
-    stagnant_rounds = 0
+
+    # Scroll để load dữ liệu
+    last_height = driver.execute_script("return document.body.scrollHeight")
+
     while True:
-        driver.execute_script("window.scrollBy(0, 1000);")
-        time.sleep(random.uniform(1.5, 3.5))
-        job_blocks = driver.find_elements(By.CSS_SELECTOR, "a[href*='/job']")
-        current = len(job_blocks)
-        if current == seen_count:
-            stagnant_rounds += 1
-        else:
-            stagnant_rounds = 0
-            seen_count = current
-        if stagnant_rounds >= 5:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(random.uniform(2, 3))
+
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
             break
+        last_height = new_height
+
+    # 🔥 Selector chuẩn (job VietnamWorks có '-jv')
+    job_blocks = driver.find_elements(By.XPATH, "//a[contains(@href, '-jv')]")
+
     job_list = []
-    for block in job_blocks[:limit]:
+    seen = set()
+
+    for block in job_blocks:
         try:
-            job_a = block.find_element(By.CSS_SELECTOR, "div.sc-eTTeRg.jkvCZV a")
             job_url = block.get_attribute("href")
-            if job_url and not job_url.startswith("http"):
-                job_url = BASE_URL + job_url
-            try:
-                location = block.find_element(By.CSS_SELECTOR, "span.sc-fTyFcS.fWdnij").text.strip()
-            except:
-                location = None
-            if job_url:
-                job_list.append((job_url, location))
+
+            # lọc link hợp lệ
+            if not job_url:
+                continue
+            if "-jv" not in job_url:
+                continue
+            if job_url in seen:
+                continue
+
+            seen.add(job_url)
+
+            job_list.append((job_url, None))  # location bỏ tạm
+
+            if len(job_list) >= limit:
+                break
+
         except:
             continue
+
+    print(f"👉 Lấy được {len(job_list)} job")
+
     return job_list
 def get_job_info(driver, job_url):
     driver.get(job_url)
@@ -177,7 +191,7 @@ def main():
         with open(JSON_PATH, "r", encoding="utf-8") as f:
             old_data = json.load(f)
             old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-    for page in range(1, 40):
+    for page in range(1,10):
         page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
         print(f"ĐANG CÀO TRANG {page}")
         job_list = get_job_links(driver, wait, page_url)
