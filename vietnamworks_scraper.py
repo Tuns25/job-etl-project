@@ -79,7 +79,7 @@ def get_job_links(driver, wait, start_url, limit=9999):
     while True:
         driver.execute_script("window.scrollBy(0, 1000);")
         time.sleep(random.uniform(1.5, 3.5))
-        job_blocks = driver.find_elements(By.CSS_SELECTOR, "div.sc-cvalOF.fsOPJQ")
+        job_blocks = driver.find_elements(By.CSS_SELECTOR, "a[href*='/job']")
         current = len(job_blocks)
         if current == seen_count:
             stagnant_rounds += 1
@@ -92,7 +92,7 @@ def get_job_links(driver, wait, start_url, limit=9999):
     for block in job_blocks[:limit]:
         try:
             job_a = block.find_element(By.CSS_SELECTOR, "div.sc-eTTeRg.jkvCZV a")
-            job_url = job_a.get_attribute("href")
+            job_url = block.get_attribute("href")
             if job_url and not job_url.startswith("http"):
                 job_url = BASE_URL + job_url
             try:
