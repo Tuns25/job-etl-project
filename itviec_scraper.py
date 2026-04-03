@@ -11,9 +11,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 COOKIE_PATH = Path("itviec_cookies.json")
-OUT_PATH = Path(r"D:\projects\ITViecData\itviec_it_filtered.json")
-REPO_PATH = Path(r"D:\projects\ITViecData")
-REPO_URL = "https://github.com/nhucamlele/ITViecData.git"
+OUT_PATH = Path(r"itviec_data.json")
+REPO_PATH = Path(r"d:\BCTN")
+REPO_URL = "https://github.com/Tuns25/job-etl-project.git"
 WAIT_TIMEOUT = 20
 DEFAULT_PAGES = 47
 def init_uc_driver(headless=False):
@@ -23,7 +23,7 @@ def init_uc_driver(headless=False):
     if headless:
         options.add_argument("--headless=new")
         options.add_argument("--window-size=1920,1080")
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(options=options, version_main=146)
     wait = WebDriverWait(driver, WAIT_TIMEOUT)
     return driver, wait
 def check_login(driver):
@@ -100,7 +100,7 @@ def parse_posted_time(text):
 def get_job_list(driver, pages=DEFAULT_PAGES):
     pattern_valid = re.compile(r"https?://itviec\.com/it-jobs/[^/?#]+-\d+$", re.IGNORECASE)
     all_job_urls = set()
-    for page in range(48, 51):
+    for page in range(1,5):
         url = f"https://itviec.com/it-jobs?page={page}"
         print("Mở trang:", url)
         driver.get(url)

@@ -68,36 +68,80 @@ def get_job_links(driver, wait, start_url, limit=9999):
     driver = ensure_driver_alive(driver)
     driver.get(start_url)
     time.sleep(7)
-    seen_count = 0
+    
+    # 1. Tiêu diệt popup và mở khóa cuộn trang
+    try:
+        driver.execute_script("""
+            var overlays = document.querySelectorAll('[role="dialog"], div[data-testid="modal"]');
+            overlays.forEach(e => e.remove());
+            document.body.style.overflow = 'auto';
+        """)
+        print("Đã xử lý popup chặn màn hình.")
+        time.sleep(1)
+    except Exception as e:
+        pass
+
+    seen_urls = set()
+    job_list = []
     stagnant_rounds = 0
+
     while True:
+        # Cuộn trang xuống
         driver.execute_script("window.scrollBy(0, 1000);")
         time.sleep(random.uniform(1.5, 3.5))
-        job_blocks = driver.find_elements(By.CSS_SELECTOR, "div.sc-cvalOF.fsOPJQ")
-        current = len(job_blocks)
-        if current == seen_count:
+
+        # 2. Thu gom TẤT CẢ các đường link nằm trong khu vực tìm kiếm
+        try:
+            job_links = driver.find_elements(By.CSS_SELECTOR, "div.search-result a")
+        except:
+            job_links = []
+        
+        current_count = len(seen_urls)
+
+        for link_elem in job_links:
+            try:
+                job_url = link_elem.get_attribute("href")
+                if not job_url:
+                    continue
+                    
+                url_lower = job_url.lower()
+                
+                # 3. MÀNG LỌC: Bỏ qua các link dẫn đến trang công ty hoặc link rác
+                if "company" in url_lower or "cong-ty" in url_lower or "nha-tuyen-dung" in url_lower:
+                    continue
+                if len(job_url) < 30 or "javascript" in url_lower:
+                    continue
+
+                if job_url not in seen_urls:
+                    seen_urls.add(job_url)
+                    if not job_url.startswith("http"):
+                        job_url = BASE_URL + job_url
+                    
+                    # Trích xuất địa điểm (dùng Try-Except để tránh lỗi nếu cấu trúc thẻ thay đổi)
+                    try:
+                        parent_text = link_elem.find_element(By.XPATH, "../..").text
+                        location = parent_text.strip().split('\n')[-1] 
+                        # Nếu lấy nhầm chuỗi quá dài (không phải tên tỉnh), gán mặc định là Vietnam
+                        if len(location) > 30: 
+                            location = "Vietnam"
+                    except:
+                        location = "Vietnam"
+
+                    job_list.append((job_url, location))
+            except:
+                continue
+
+        # Kiểm tra xem có load thêm được link mới không
+        if len(seen_urls) == current_count:
             stagnant_rounds += 1
         else:
             stagnant_rounds = 0
-            seen_count = current
+            
         if stagnant_rounds >= 5:
             break
-    job_list = []
-    for block in job_blocks[:limit]:
-        try:
-            job_a = block.find_element(By.CSS_SELECTOR, "div.sc-eTTeRg.jkvCZV a")
-            job_url = job_a.get_attribute("href")
-            if job_url and not job_url.startswith("http"):
-                job_url = BASE_URL + job_url
-            try:
-                location = block.find_element(By.CSS_SELECTOR, "span.sc-fTyFcS.fWdnij").text.strip()
-            except:
-                location = None
-            if job_url:
-                job_list.append((job_url, location))
-        except:
-            continue
-    return job_list
+
+    print(f"Đã tìm thấy {len(job_list)} công việc trên trang này.")
+    return job_list[:limit]
 def get_job_info(driver, job_url):
     driver.get(job_url)
     time.sleep(random.uniform(2, 4))
@@ -171,7 +215,7 @@ def main():
         with open(JSON_PATH, "r", encoding="utf-8") as f:
             old_data = json.load(f)
             old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-    for page in range(1,4):
+    for page in range(1,40):
         page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
         print(f"ĐANG CÀO TRANG {page}")
         job_list = get_job_links(driver, wait, page_url)

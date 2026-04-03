@@ -14,7 +14,7 @@ SHOWMORE_WAIT = 3
 DETAIL_PAGE_INITIAL_WAIT = 2
 DETAIL_PAGE_EXTRA_WAIT = 2
 RETRY_DETAIL = 2
-SAVE_PATH = r"D:\projects\ITJobsData\itjobs_data.json"
+SAVE_PATH = "itjobs_data.json"
 SAVE_EVERY = 100
 def init_uc_driver(headless=False):
     options = uc.ChromeOptions()
@@ -23,7 +23,7 @@ def init_uc_driver(headless=False):
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(options=options, version_main=146)
     driver.set_window_size(1280, 900)
     return driver
 def safe_get_text(driver, by, selector, timeout=5):
