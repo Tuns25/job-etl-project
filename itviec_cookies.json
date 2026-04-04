@@ -1,0 +1,91 @@
+[
+  {
+    "domain": ".itviec.com",
+    "expiry": 1809847132,
+    "httpOnly": false,
+    "name": "_ga_H9FSZTPEGR",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GS2.1.s1775287098$o1$g1$t1775287132$j26$l1$h1634380801"
+  },
+  {
+    "domain": ".itviec.com",
+    "expiry": 1809847132,
+    "httpOnly": false,
+    "name": "_ga",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "GA1.1.1250335791.1775287098"
+  },
+  {
+    "domain": ".itviec.com",
+    "expiry": 1806823098,
+    "httpOnly": true,
+    "name": "cf_clearance",
+    "path": "/",
+    "sameSite": "None",
+    "secure": true,
+    "value": "tWo72o5Hix0zO4dP4b.mHHzix5RCf79_o8syrt9geIw-1775287097-1.2.1.1-N0KxeZiLPqHsdSN_9oIR6E7Go0w61zg.mWAhg2Bk5I2Pss9YosAV3.V9znnfP2qap0alytBBINxVkcAT.OCyLPGqLQWdZDdf28IfUV5A4c0dyIR7qwPp6vc7DqDvHy0h28hkJhy0cAxGj11YZWRls4cPlzy_.7VX3hE7gXOuUirwBJd2vnRnvdG6qczlaHr3ucDrPGORvEr31t1DBmMRnCDq25pksB2R.x6pJfWKjIhqAMT5F.KZ9Brg_A0hccwmKF9GpJ7JiZDmABMK2Gj2ezGvO61HeLvraxvzYOpb2m98r09WZzDwdYPnl47i8m7MqRolif.d7dywd9vLTk3.Ug"
+  },
+  {
+    "domain": "itviec.com",
+    "httpOnly": false,
+    "name": "device_id",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "eyJfcmFpbHMiOnsibWVzc2FnZSI6IkltSTFNVFEyTkdKbExUSmxZV1F0TkRnNE1DMDROamcxTFRSbFpqaG1NRE15WkRZMk5pST0iLCJleHAiOm51bGwsInB1ciI6ImNvb2tpZS5kZXZpY2VfaWQifX0%3D--925d61e9b119644811e156f1698263ce537a7d6e"
+  },
+  {
+    "domain": ".itviec.com",
+    "expiry": 1783063098,
+    "httpOnly": false,
+    "name": "_gcl_au",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1.1.755223389.1775287098"
+  },
+  {
+    "domain": "itviec.com",
+    "expiry": 1790839099,
+    "httpOnly": false,
+    "name": "g_state",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "{\"i_l\":0,\"i_ll\":1775287099579,\"i_b\":\"o5c5TQHykTYtGq2NdGGD7knz6cJ/l49GmZUOTCDemxo\",\"i_e\":{\"enable_itp_optimization\":0}}"
+  },
+  {
+    "domain": ".itviec.com",
+    "expiry": 1783063132,
+    "httpOnly": false,
+    "name": "_fbp",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "fb.1.1775287098608.892777776808668315"
+  },
+  {
+    "domain": "itviec.com",
+    "expiry": 1776496731,
+    "httpOnly": true,
+    "name": "auth_token",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "TambGvlhYduto5Af1YKk%2F80J67BkL4YLMSVxQaxdnXBx0zL0MjBF%2F5r%2B%2FwBBcxaRRwPq%2FLmdI9OMPIOJAbkQ7tz7a31Z1APOidRPQqCpnROC0FkJgQ3fjwOOzNQ%2Bwfae6%2B1IhuJNgrb%2BMBI9F5IjVyCMNxCFFhNOmrEj%2B1mPRq9iOmvvGVfjQAarnkTB3pNPTsZ2RvyEddH3oJB5AvGUKU6u1TuG0iyO5pN%2B6lBBXMquBX3qyXpDLgGjTDZJ89ULHRNjp5LCkPF8Htlsk7GlKu%2FcCWIfULUQqap9W%2B%2FfDYzCr6Fr5j6W0%2BVKhD92RN7gJq%2FjdJ5JtOUucl8PeWr585tidZA%3D--yL1nt9skXLbx4HAp--impkaIi0TeH8inNzqnHPhw%3D%3D"
+  },
+  {
+    "domain": "itviec.com",
+    "expiry": 1776496733,
+    "httpOnly": true,
+    "name": "_ITViec_session",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "YTQH7Iop63MewUO%2B6yInwO8gzIQyrvTloCzTr77oyvm3bPPt%2FS58Io%2FErxVnYCduQJOtiftCjYvU5vbWNhlZrxT%2BQ%2BzpWVI3i%2FIYuUgYp6J5XLi4gLLAjxskZXdrNpfe4tjXCJE2Hu1zAQACoQnQsa6F1VOe6bVr7zj61lqr3bn6djXR1%2FL4DSjLNE0MCsA7LFOm7MI4hfV2liPNAbaaw8Zwf7wCw6WGcxPM3h%2BYM7P6%2FtS6QBMI35%2FK4UdQtYUjlas5DeN3gvMxOvUHA%2FkEWUydrfeGqDPEQ3z2t4tIoUBNGpqUTBvDbKRN0%2BbmDgo5F9qclrA%2Brz8Oa18XxMSPpZnRJ%2B7G8BxOLg1rAOFFjhFivF8nmDsgVRYOrn3ruxeu%2BrhgVLCXLqFUK2v6%2FcDQdoOwNXwAzPkHMRoIZXHSdZY%2B5aElNBzcavw0EXWwRRS42MNNOpkq1bUwRcpfUS0bCNXqGLhefUVD5ytIpIqoDNuXmTMk7umvbR0pu4Wq1Y3yBZXRmjCK4yfC15jUeutl5I%2Bj2%2BiepwDxnPoCxaTmMm%2BFrdWwsK9KZSPuWBS8OhjPmKu1RBt6OW6NGaR77yDGsVkQ64Ca9fCSUTm%2B4bDo2cW2VeZoDuADx3SOj9hCP31MYK98NMlTmLk%2F7mtPr9SsLl7BYQm0yR7T5ZRvfVDRVPQhhc6OJsi%2FjKFg8HAW--TKHUKZiCEwp22kem--ACc80cqRKvCBPcbj3G1Hnw%3D%3D"
+  }
+]

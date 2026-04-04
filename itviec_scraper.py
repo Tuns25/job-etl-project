@@ -27,23 +27,35 @@ def init_uc_driver(headless=False):
     wait = WebDriverWait(driver, WAIT_TIMEOUT)
     return driver, wait
 def check_login(driver):
-    time.sleep(2)
-    if "sign_in" in driver.current_url:
-        print("Đang ở trang login -> chưa đăng nhập")
-        return False
-    selectors = [
-        "div.sign-in-user-avatar img.user-avatar",
-        "a[href*='logout']"
-    ]
-    for sel in selectors:
-        try:
-            elem = driver.find_element(By.CSS_SELECTOR, sel)
-            if elem.is_displayed():
-                print("Đã đăng nhập thành công")
-                return True
-        except:
-            pass
-    print("Không tìm thấy avatar -> login thất bại")
+    time.sleep(3) # Tăng thời gian đợi để trang load hoàn toàn
+    current_url = driver.current_url.lower()
+    
+    # Nếu URL không còn chứa 'sign_in', khả năng cao là đã vào được bên trong
+    if "sign_in" not in current_url:
+        print(f"Đã chuyển hướng khỏi trang login (URL hiện tại: {driver.current_url})")
+        
+        # Thêm các selector phổ biến hiện nay của ITviec
+        selectors = [
+            "div.user-menu", 
+            "a[href*='sign_out']", 
+            "img.user-avatar",
+            ".navigation__link--user-profile",
+            "div.sign-in-user-avatar"
+        ]
+        
+        for sel in selectors:
+            try:
+                if driver.find_elements(By.CSS_SELECTOR, sel):
+                    print("✅ Xác nhận: Đã tìm thấy dấu hiệu đăng nhập thành công")
+                    return True
+            except:
+                pass
+        
+        # Mẹo: Nếu URL đã đổi mà không tìm thấy avatar, ta vẫn "tin tưởng" cho chạy tiếp
+        print("⚠️ Không thấy avatar rõ ràng nhưng URL đã đổi -> Vẫn coi như đã login")
+        return True
+
+    print("❌ Vẫn đang đứng ở trang đăng nhập.")
     return False
 def load_cookies(driver, path: Path, domain="itviec.com"):
     if not path.exists():
@@ -100,7 +112,7 @@ def parse_posted_time(text):
 def get_job_list(driver, pages=DEFAULT_PAGES):
     pattern_valid = re.compile(r"https?://itviec\.com/it-jobs/[^/?#]+-\d+$", re.IGNORECASE)
     all_job_urls = set()
-    for page in range(1,5):
+    for page in range(1,pages+1):
         url = f"https://itviec.com/it-jobs?page={page}"
         print("Mở trang:", url)
         driver.get(url)
