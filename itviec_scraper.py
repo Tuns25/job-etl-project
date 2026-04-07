@@ -9,6 +9,22 @@ from datetime import datetime, timedelta
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Cấu hình AWS - Nên dùng Environment Variables để bảo mật
+AWS_ACCESS_KEY = 'YOUR_ACCESS_KEY'
+AWS_SECRET_KEY = 'YOUR_SECRET_KEY'
+BUCKET_NAME = 'job-market-bronze-layer'
+
+def upload_to_s3(file_name, s3_path):
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, 
+                      aws_secret_access_key=AWS_SECRET_KEY)
+    try:
+        s3.upload_file(file_name, BUCKET_NAME, s3_path)
+        print(f"✅ Tải lên S3 thành công: {s3_path}")
+    except Exception as e:
+        print(f"❌ Lỗi tải lên S3: {e}")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 COOKIE_PATH = Path("itviec_cookies.json")
 OUT_PATH = Path(r"itviec_data.json")
@@ -190,8 +206,10 @@ def crawl_job(driver, url):
 def main():
     driver, wait = init_uc_driver(headless=False)
     try:
+        # --- BƯỚC 1: XỬ LÝ ĐĂNG NHẬP & COOKIE ---
         if not load_cookies(driver, COOKIE_PATH):
             manual_login_and_save(driver)
+        
         existing_jobs = []
         seen_urls = set()
         if OUT_PATH.exists():
@@ -199,23 +217,37 @@ def main():
                 existing_jobs = json.load(f)
                 seen_urls = {j["Url"] for j in existing_jobs if "Url" in j}
             print(f"Load {len(existing_jobs)} job cũ")
+
+        # --- BƯỚC 2: QUÉT DANH SÁCH & CRAWL CHI TIẾT ---
         job_links = get_job_list(driver, pages=DEFAULT_PAGES)
         new_links = [u for u in job_links if u not in seen_urls]
         print(f"\nCó {len(new_links)} job mới cần crawl\n")
+        
         jobs = existing_jobs[:]
         for i, link in enumerate(new_links, 1):
             print(f"[{i}/{len(new_links)}] Crawl: {link}")
             job = crawl_job(driver, link)
             jobs.append(job)
             time.sleep(random.uniform(1.5, 3))
+
+        # --- BƯỚC 3: LƯU DỮ LIỆU LOCAL ---
         with OUT_PATH.open("w", encoding="utf-8") as f:
             json.dump(jobs, f, ensure_ascii=False, indent=2)
-        print(f"\nLưu {len(jobs)} job vào {OUT_PATH}")
+        print(f"\n✅ Đã lưu {len(jobs)} job vào {OUT_PATH}")
+
+        # --- BƯỚC 4: ĐẨY LÊN AWS S3 (Bronze Layer) ---
+        # Chú ý: Dòng này phải thẳng hàng với lệnh 'with' ở trên
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        s3_key = f"itviec/raw/itviec_{timestamp}.json"
+        upload_to_s3(str(OUT_PATH), s3_key)
+
+        # --- BƯỚC 5: CẬP NHẬT GITHUB (Chỉ lưu mã nguồn) ---
         os.chdir(REPO_PATH)
-        subprocess.run(["git","add","."], check=False)
-        subprocess.run(["git","commit","-m",f"update {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"], check=False)
-        subprocess.run(["git","push","origin","main"], check=False)
-        print("Push GitHub xong")
+        subprocess.run(["git", "add", "itviec_scraper.py"], check=False) # Chỉ nên add file code
+        subprocess.run(["git", "commit", "-m", f"update scraper {timestamp}"], check=False)
+        subprocess.run(["git", "push", "origin", "main"], check=False)
+        print("🚀 Push GitHub xong")
+
     finally:
         driver.quit()
 if __name__ == "__main__":
