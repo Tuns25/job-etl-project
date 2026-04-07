@@ -13,8 +13,8 @@ import boto3
 from botocore.exceptions import NoCredentialsError
 
 # Cấu hình AWS - Nên dùng Environment Variables để bảo mật
-AWS_ACCESS_KEY = 'YOUR_ACCESS_KEY'
-AWS_SECRET_KEY = 'YOUR_SECRET_KEY'
+AWS_ACCESS_KEY = 'AKIA25HO62A57G5FLE3I'
+AWS_SECRET_KEY = 'mDE26KQFsn2AYlTX5hQnBH7mVd0pP/efIws43r2D'
 BUCKET_NAME = 'job-market-bronze-layer'
 
 def upload_to_s3(file_name, s3_path):
@@ -22,9 +22,9 @@ def upload_to_s3(file_name, s3_path):
                       aws_secret_access_key=AWS_SECRET_KEY)
     try:
         s3.upload_file(file_name, BUCKET_NAME, s3_path)
-        print(f"✅ Tải lên S3 thành công: {s3_path}")
+        print(f"Tải lên S3 thành công: {s3_path}")
     except Exception as e:
-        print(f"❌ Lỗi tải lên S3: {e}")
+        print(f" Lỗi tải lên S3: {e}")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 COOKIE_PATH = Path("itviec_cookies.json")
 OUT_PATH = Path(r"itviec_data.json")
@@ -62,16 +62,16 @@ def check_login(driver):
         for sel in selectors:
             try:
                 if driver.find_elements(By.CSS_SELECTOR, sel):
-                    print("✅ Xác nhận: Đã tìm thấy dấu hiệu đăng nhập thành công")
+                    print("Xác nhận: Đã tìm thấy dấu hiệu đăng nhập thành công")
                     return True
             except:
                 pass
         
         # Mẹo: Nếu URL đã đổi mà không tìm thấy avatar, ta vẫn "tin tưởng" cho chạy tiếp
-        print("⚠️ Không thấy avatar rõ ràng nhưng URL đã đổi -> Vẫn coi như đã login")
+        print(" Không thấy avatar rõ ràng nhưng URL đã đổi -> Vẫn coi như đã login")
         return True
 
-    print("❌ Vẫn đang đứng ở trang đăng nhập.")
+    print(" Vẫn đang đứng ở trang đăng nhập.")
     return False
 def load_cookies(driver, path: Path, domain="itviec.com"):
     if not path.exists():
@@ -128,7 +128,7 @@ def parse_posted_time(text):
 def get_job_list(driver, pages=DEFAULT_PAGES):
     pattern_valid = re.compile(r"https?://itviec\.com/it-jobs/[^/?#]+-\d+$", re.IGNORECASE)
     all_job_urls = set()
-    for page in range(1,pages+1):
+    for page in range(1,3):
         url = f"https://itviec.com/it-jobs?page={page}"
         print("Mở trang:", url)
         driver.get(url)
@@ -151,7 +151,7 @@ def get_job_list(driver, pages=DEFAULT_PAGES):
                     all_job_urls.add(href.split("?")[0])
             except:
                 pass
-        print(f"  ➕ Tổng tích lũy: {len(all_job_urls)} job")
+        print(f"   Tổng tích lũy: {len(all_job_urls)} job")
         time.sleep(random.uniform(1,2))
     return list(all_job_urls)
 def crawl_job(driver, url):
@@ -233,7 +233,7 @@ def main():
         # --- BƯỚC 3: LƯU DỮ LIỆU LOCAL ---
         with OUT_PATH.open("w", encoding="utf-8") as f:
             json.dump(jobs, f, ensure_ascii=False, indent=2)
-        print(f"\n✅ Đã lưu {len(jobs)} job vào {OUT_PATH}")
+        print(f"\n Đã lưu {len(jobs)} job vào {OUT_PATH}")
 
         # --- BƯỚC 4: ĐẨY LÊN AWS S3 (Bronze Layer) ---
         # Chú ý: Dòng này phải thẳng hàng với lệnh 'with' ở trên
@@ -246,7 +246,7 @@ def main():
         subprocess.run(["git", "add", "itviec_scraper.py"], check=False) # Chỉ nên add file code
         subprocess.run(["git", "commit", "-m", f"update scraper {timestamp}"], check=False)
         subprocess.run(["git", "push", "origin", "main"], check=False)
-        print("🚀 Push GitHub xong")
+        print(" Push GitHub xong")
 
     finally:
         driver.quit()
