@@ -3,9 +3,29 @@ import json
 import random
 import os
 import subprocess
+from dotenv import load_dotenv
 import undetected_chromedriver as uc
+from datetime import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Cấu hình AWS - Nên dùng Environment Variables để bảo mật
+# Tải thông tin từ file .env
+load_dotenv()
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')
+BUCKET_NAME = 'job-market-bronze-layer'
+
+def upload_to_s3(file_name, s3_path):
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, 
+                      aws_secret_access_key=AWS_SECRET_KEY)
+    try:
+        s3.upload_file(file_name, BUCKET_NAME, s3_path)
+        print(f" Tải lên S3 thành công: {s3_path}")
+    except Exception as e:
+        print(f"Lỗi tải lên S3: {e}")
 START_URL = "https://www.vietnamworks.com/it-kw"
 BASE_URL = "https://www.vietnamworks.com"
 JSON_PATH = "vietnamworks_it_filtered.json"
@@ -211,47 +231,70 @@ def main():
     results = []
     old_urls = set()
 
+    # --- BƯỚC 1: KIỂM TRA DỮ LIỆU CŨ ---
     if os.path.exists(JSON_PATH):
         with open(JSON_PATH, "r", encoding="utf-8") as f:
-            old_data = json.load(f)
-            old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-    for page in range(1,40):
-        page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
-        print(f"ĐANG CÀO TRANG {page}")
-        job_list = get_job_links(driver, wait, page_url)
-        for job_url, location in job_list:
-            if job_url in old_urls:
-                continue
-            job_info = get_job_info(driver, job_url)
-            if not job_info.get("Company_url"):
-                continue
-            company_info = get_company_info(driver, job_info["Company_url"])
-            if not company_info:
-                continue
-            results.append({
-                "Url": job_url,
-                "Job name": job_info["Job_name"],
-                "Company Name": company_info["Company"],
-                "Address": location,
-                "Company type": "At office",
-                "Time": job_info["Posted_time"],
-                "Skills": job_info["Skills"],
-                "Job domain": job_info["Job_domain"],
-                "Salary": job_info["Salary"],
-                "Company industry": company_info["Company industry"],
-                "Company size": company_info["Company size"],
-                "Working days": "Monday-Friday"
-            })
-    save_or_update_json(results, JSON_PATH)
-    driver.quit()
-def auto_git_push(commit_msg="update data"):
+            try:
+                old_data = json.load(f)
+                old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
+            except: pass
+
     try:
-        subprocess.run(["git", "add", "."], check=True)
+        # --- BƯỚC 2: CÀO DỮ LIỆU (Giữ nguyên logic của bạn) ---
+        for page in range(1, 40):
+            page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
+            print(f" Đang trích xuất VietnamWorks trang {page}...")
+            job_list = get_job_links(driver, wait, page_url)
+            
+            for job_url, location in job_list:
+                if job_url in old_urls: continue
+                job_info = get_job_info(driver, job_url)
+                if not job_info.get("Company_url"): continue
+                company_info = get_company_info(driver, job_info["Company_url"])
+                if not company_info: continue
+                
+                results.append({
+                    "Url": job_url,
+                    "Job name": job_info["Job_name"],
+                    "Company Name": company_info["Company"],
+                    "Address": location,
+                    "Company type": "At office",
+                    "Time": job_info["Posted_time"],
+                    "Skills": job_info["Skills"],
+                    "Job domain": job_info["Job_domain"],
+                    "Salary": job_info["Salary"],
+                    "Company industry": company_info["Company industry"],
+                    "Company size": company_info["Company size"],
+                    "Working days": "Monday-Friday"
+                })
+
+        # --- BƯỚC 3: LƯU DỮ LIỆU LOCAL ---
+        if results:
+            save_or_update_json(results, JSON_PATH)
+        
+        # --- BƯỚC 4: ĐẨY LÊN AWS S3 (Bronze Layer) ---
+        # Đồng bộ cách đặt tên file với các scraper khác
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        s3_key = f"vietnamworks/raw/vnw_data_{timestamp}.json"
+        upload_to_s3(JSON_PATH, s3_key)
+        
+        print(" Hoàn tất chu kỳ trích xuất VietnamWorks!")
+
+    finally:
+        driver.quit()
+
+    # --- BƯỚC 5: CẬP NHẬT MÃ NGUỒN (Code Only) ---
+    auto_git_push_code_only(f"Update scraper VietnamWorks: {timestamp}")
+
+def auto_git_push_code_only(commit_msg):
+    """Chỉ đẩy file code lên GitHub để giữ Repo sạch sẽ"""
+    try:
+        subprocess.run(["git", "add", "vietnamworks_scraper.py"], check=True)
         subprocess.run(["git", "commit", "-m", commit_msg], check=True)
         subprocess.run(["git", "push", "origin", "main"], check=True)
-        print("Auto push thành công")
-    except:
-        print("Không có thay đổi hoặc push lỗi")
+        print(" Đã cập nhật mã nguồn lên GitHub.")
+    except Exception as e:
+        print(f" Git Push thất bại (Có thể không có thay đổi code): {e}")
+
 if __name__ == "__main__":
     main()
-    auto_git_push("update: scrape data with Address & Posted/Skills fix")
