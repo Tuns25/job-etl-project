@@ -4,6 +4,7 @@ import random
 import json
 import re
 import subprocess
+from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime, timedelta
 import undetected_chromedriver as uc
@@ -13,8 +14,9 @@ import boto3
 from botocore.exceptions import NoCredentialsError
 
 # Cấu hình AWS - Nên dùng Environment Variables để bảo mật
-AWS_ACCESS_KEY = 'AKIA25HO62A57G5FLE3I'
-AWS_SECRET_KEY = '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'
+load_dotenv()
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')
 BUCKET_NAME = 'job-market-bronze-layer'
 
 def upload_to_s3(file_name, s3_path):
