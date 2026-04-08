@@ -1,14 +1,33 @@
+from datetime import datetime
 import time
 import json
 import os
 import subprocess
+from dotenv import load_dotenv
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Cấu hình AWS - Nên dùng Environment Variables để bảo mật
+load_dotenv()
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')
+BUCKET_NAME = 'job-market-bronze-layer'
+
+def upload_to_s3(file_name, s3_path):
+    s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, 
+                      aws_secret_access_key=AWS_SECRET_KEY)
+    try:
+        s3.upload_file(file_name, BUCKET_NAME, s3_path)
+        print(f"Tải lên S3 thành công: {s3_path}")
+    except Exception as e:
+        print(f"Lỗi tải lên S3: {e}")
 BASE_URL = "https://www.itjobs.com.vn"
 START_URL = "https://www.itjobs.com.vn/en"
-MAX_JOBS = 1000
+MAX_JOBS = 5
 PAGE_LOAD_DELAY = 3
 SHOWMORE_WAIT = 3
 DETAIL_PAGE_INITIAL_WAIT = 2
@@ -128,25 +147,39 @@ def save_or_update_json(new_data, file_path=SAVE_PATH):
 def main():
     driver = init_uc_driver(headless=False)
     try:
-        print("Đang lấy danh sách job...")
+        print("Đang bắt đầu quy trình Extract: ITJobs...")
         job_urls = get_job_urls(driver, START_URL, max_jobs=MAX_JOBS)
-        print(f"Tổng cộng: {len(job_urls)} job URL")
         new_jobs = []
         for idx, job_url in enumerate(job_urls):
             print(f"[{idx+1}/{len(job_urls)}] {job_url}")
             job_data = scrape_job_details(driver, job_url)
             new_jobs.append(job_data)
+        
+        # 1. Lưu bản dự phòng tại máy local
+        has_new_data = False
         if new_jobs:
-            save_or_update_json(new_jobs)
-        print("Hoàn tất cào dữ liệu ITJobs!")
+            has_new_data = save_or_update_json(new_jobs)
+        
+        # 2. GIAI ĐOẠN NÂNG CAO: Đẩy lên Cloud (Bronze Layer)
+        # Chúng ta đặt tên file kèm ngày tháng để dễ quản lý/kiểm toán sau này
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        s3_key = f"itjobs/raw/itjobs_data_{timestamp}.json"
+        
+        upload_to_s3(SAVE_PATH, s3_key)
+        
+        print(" Hoàn tất chu kỳ ETL cho ITJobs!")
+
     finally:
         driver.quit()
+
+    # PHẦN GIT PUSH: Chỉ giữ lại để lưu CODE, không lưu DATA JSON
+    # Bạn nên tạo file .gitignore và thêm dòng itjobs_data.json vào đó
     repo_path = os.path.dirname(os.path.abspath(__file__))
-    print("\nĐang cập nhật GitHub...")
-    subprocess.run(["git", "add", SAVE_PATH], cwd=repo_path)
+    print("\n Đang cập nhật mã nguồn lên GitHub (Code only)...")
+    import subprocess
     subprocess.run(["git", "add", "itjobs_scraper.py"], cwd=repo_path)
-    subprocess.run(["git", "commit", "-m", "auto update ITJobs data and scraper"], cwd=repo_path)
+    subprocess.run(["git", "commit", "-m", f"update scraper logic {datetime.now()}"], cwd=repo_path)
     subprocess.run(["git", "push", "origin", "main"], cwd=repo_path)
-    print("Hoàn tất cập nhật GitHub.")
+
 if __name__ == "__main__":
     main()
