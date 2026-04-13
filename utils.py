@@ -23,17 +23,20 @@ def init_uc_driver(headless=True):
     is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
 
     if is_cloud:
-        options.add_argument('--headless=new') # Dùng mode headless mới
-        # Đường dẫn sau khi giải nén từ bản tải phía trên
-        options.binary_location = '/opt/bin/chromium'
+        options.add_argument('--headless=new')
+        # Đường dẫn mặc định khi cài bằng yum
+        options.binary_location = '/usr/bin/chromium-browser'
         
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--single-process')
         options.add_argument('--user-data-dir=/tmp/user-data')
         
+        # Để selenium tự tìm driver tương thích với bản yum hoặc trỏ thủ công
         driver = uc.Chrome(
             options=options,
-            driver_executable_path="/opt/chromedriver",
+            driver_executable_path="/usr/bin/chromedriver",
             version_main=119
         )
     else:
