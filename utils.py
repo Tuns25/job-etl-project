@@ -23,19 +23,21 @@ def init_uc_driver(headless=True):
     is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
 
     if is_cloud:
-        options.add_argument('--headless=new')
-        # Đường dẫn mới sau khi unzip
-        options.binary_location = '/opt/chrome-linux64/chrome'
+        # Sử dụng mode headless cũ vì bản này cực kỳ ổn định
+        options.add_argument('--headless')
+        # Đường dẫn sau khi giải nén từ lệnh tar ở trên
+        options.binary_location = '/opt/headless-chromium'
         
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--single-process')
+        options.add_argument('--disable-gpu')
         
         driver = uc.Chrome(
             options=options,
-            # Đường dẫn driver mới
-            driver_executable_path="/opt/chromedriver-linux64/chromedriver",
-            version_main=119
+            # Đường dẫn sau khi giải nén từ lệnh unzip ở trên
+            driver_executable_path="/opt/chromedriver",
+            version_main=114 # Khớp với bản driver v2.37
         )
     else:
         # Chạy ở máy Local (Windows)
