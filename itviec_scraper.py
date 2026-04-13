@@ -205,23 +205,36 @@ def crawl_job(driver, url):
     except Exception as e:
         print("Lỗi crawl:", e)
     return job
-def main():
-    driver, wait = init_uc_driver(headless=False)
+def run_scraper():
+    # 1. Tự động bật Headless nếu chạy trên Cloud
+    is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
+    driver, wait = init_uc_driver(headless=is_cloud)
+    
     try:
         # --- BƯỚC 1: XỬ LÝ ĐĂNG NHẬP & COOKIE ---
+        # Trên Cloud, bắt buộc phải có file itviec_cookies.json đi kèm trong repo
         if not load_cookies(driver, COOKIE_PATH):
-            manual_login_and_save(driver)
-        
+            if not is_cloud:
+                manual_login_and_save(driver)
+            else:
+                print(" Lỗi: Cloud không có cookie. Hãy push file itviec_cookies.json lên GitHub.")
+                return
+
         existing_jobs = []
         seen_urls = set()
         if OUT_PATH.exists():
-            with OUT_PATH.open("r", encoding="utf-8") as f:
-                existing_jobs = json.load(f)
-                seen_urls = {j["Url"] for j in existing_jobs if "Url" in j}
-            print(f"Load {len(existing_jobs)} job cũ")
+            try:
+                with OUT_PATH.open("r", encoding="utf-8") as f:
+                    existing_jobs = json.load(f)
+                    seen_urls = {j["Url"] for j in existing_jobs if "Url" in j}
+                print(f"Load {len(existing_jobs)} job cũ")
+            except: pass
 
         # --- BƯỚC 2: QUÉT DANH SÁCH & CRAWL CHI TIẾT ---
-        job_links = get_job_list(driver, pages=DEFAULT_PAGES)
+        # Để tránh Lambda bị quá giờ (Timeout), bạn có thể giới hạn số trang khi chạy tự động
+        pages_to_crawl = 2 if is_cloud else DEFAULT_PAGES 
+        job_links = get_job_list(driver, pages=pages_to_crawl)
+        
         new_links = [u for u in job_links if u not in seen_urls]
         print(f"\nCó {len(new_links)} job mới cần crawl\n")
         
@@ -232,25 +245,37 @@ def main():
             jobs.append(job)
             time.sleep(random.uniform(1.5, 3))
 
-        # --- BƯỚC 3: LƯU DỮ LIỆU LOCAL ---
-        with OUT_PATH.open("w", encoding="utf-8") as f:
-            json.dump(jobs, f, ensure_ascii=False, indent=2)
-        print(f"\n Đã lưu {len(jobs)} job vào {OUT_PATH}")
+        # --- BƯỚC 3 & 4: LƯU VÀ ĐẨY S3 ---
+        if new_links:
+            # Lưu file local (trong container)
+            with OUT_PATH.open("w", encoding="utf-8") as f:
+                json.dump(jobs, f, ensure_ascii=False, indent=2)
+            
+            # Đẩy lên S3 Bronze Layer
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            s3_key = f"itviec/raw/itviec_{timestamp}.json"
+            upload_to_s3(str(OUT_PATH), s3_key)
+            print(f" Hoàn tất chu kỳ ITviec lúc {timestamp}")
 
-        # --- BƯỚC 4: ĐẨY LÊN AWS S3 (Bronze Layer) ---
-        # Chú ý: Dòng này phải thẳng hàng với lệnh 'with' ở trên
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key = f"itviec/raw/itviec_{timestamp}.json"
-        upload_to_s3(str(OUT_PATH), s3_key)
-
-        # --- BƯỚC 5: CẬP NHẬT GITHUB (Chỉ lưu mã nguồn) ---
-        os.chdir(REPO_PATH)
-        subprocess.run(["git", "add", "itviec_scraper.py"], check=False) # Chỉ nên add file code
-        subprocess.run(["git", "commit", "-m", f"update scraper {timestamp}"], check=False)
-        subprocess.run(["git", "push", "origin", "main"], check=False)
-        print(" Push GitHub xong")
+    except Exception as e:
+        print(f" Lỗi thực thi Scraper: {e}")
 
     finally:
         driver.quit()
+        # --- BƯỚC 5: CHỈ GIT PUSH NẾU Ở LOCAL ---
+        if not is_cloud:
+            auto_git_push_code_only(f"update scraper ITviec {datetime.now()}")
+
+def auto_git_push_code_only(commit_msg):
+    """Hàm bổ trợ đẩy code lên GitHub ở máy Local"""
+    try:
+        # Sử dụng đường dẫn tương đối để linh hoạt hơn REPO_PATH cũ
+        subprocess.run(["git", "add", "itviec_scraper.py"], check=False)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=False)
+        subprocess.run(["git", "push", "origin", "main"], check=False)
+        print(" Đã đẩy mã nguồn mới lên GitHub")
+    except Exception as e:
+        print(f" Git push thất bại: {e}")
+
 if __name__ == "__main__":
-    main()
+    run_scraper()

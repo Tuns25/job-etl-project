@@ -6,6 +6,7 @@ import subprocess
 from dotenv import load_dotenv
 import undetected_chromedriver as uc
 from datetime import datetime
+from utils import init_uc_driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import boto3
@@ -60,23 +61,6 @@ def save_or_update_json(new_data, file_path=JSON_PATH):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(updated, f, ensure_ascii=False, indent=2)
     print(f"Đã cập nhật {file_path}: tổng {len(updated)} job.")
-def init_uc_driver(headless=False, retries=3):
-    for attempt in range(1, retries + 1):
-        try:
-            options = uc.ChromeOptions()
-            for opt in CHROME_OPTIONS_LIST:
-                options.add_argument(opt)
-            options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-            if headless:
-                options.add_argument("--headless")
-            driver = uc.Chrome(options=options, version_main=146)
-            driver.maximize_window()
-            wait = WebDriverWait(driver, 20)
-            print("Chrome driver khởi tạo")
-            return driver, wait
-        except:
-            time.sleep(3)
-    raise RuntimeError("Không thể khởi tạo driver")
 def ensure_driver_alive(driver):
     try:
         driver.current_url
@@ -226,30 +210,48 @@ def get_company_info(driver, company_url):
         "Company size": company_size,
         "Company industry": company_industry
     }
-def main():
-    driver, wait = init_uc_driver(headless=False)
+# --- HÀM TỰ ĐỘNG PUSH (Cải tiến để không lỗi trên Cloud) ---
+def auto_git_push_code_only(commit_msg):
+    # Nếu chạy trên Cloud, hàm này sẽ tự thoát ngay lập tức
+    if os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+        return 
+    try:
+        subprocess.run(["git", "add", "vietnamworks_scraper.py"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+        print("🚀 Đã cập nhật mã nguồn lên GitHub.")
+    except Exception:
+        print("⚠️ Bỏ qua Git Push (Có thể do môi trường hoặc không có thay đổi).")
+
+# --- HÀM CHÍNH (THAY THẾ MAIN) ---
+def run_scraper():
+    # Tự động nhận diện: Nếu trên Cloud thì chạy ẩn (True), nếu máy nhà thì hiện Chrome (False)
+    is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
+    driver, wait = init_uc_driver(headless=is_cloud) 
+    
     results = []
     old_urls = set()
 
-    # --- BƯỚC 1: KIỂM TRA DỮ LIỆU CŨ ---
+    # Bước 1: Kiểm tra dữ liệu cũ
     if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, "r", encoding="utf-8") as f:
-            try:
+        try:
+            with open(JSON_PATH, "r", encoding="utf-8") as f:
                 old_data = json.load(f)
                 old_urls = {item.get("Url") for item in old_data if isinstance(item, dict)}
-            except: pass
+        except: pass
 
     try:
-        # --- BƯỚC 2: CÀO DỮ LIỆU (Giữ nguyên logic của bạn) ---
+        # Bước 2: Cào dữ liệu
         for page in range(1, 40):
             page_url = f"https://www.vietnamworks.com/jobs?q=it&page={page}&sorting=relevant"
-            print(f" Đang trích xuất VietnamWorks trang {page}...")
             job_list = get_job_links(driver, wait, page_url)
             
             for job_url, location in job_list:
                 if job_url in old_urls: continue
                 job_info = get_job_info(driver, job_url)
                 if not job_info.get("Company_url"): continue
+                
+                # SỬA LỖI QUAN TRỌNG: Phải truyền 'driver' vào hàm này
                 company_info = get_company_info(driver, job_info["Company_url"])
                 if not company_info: continue
                 
@@ -258,43 +260,23 @@ def main():
                     "Job name": job_info["Job_name"],
                     "Company Name": company_info["Company"],
                     "Address": location,
-                    "Company type": "At office",
-                    "Time": job_info["Posted_time"],
-                    "Skills": job_info["Skills"],
-                    "Job domain": job_info["Job_domain"],
                     "Salary": job_info["Salary"],
                     "Company industry": company_info["Company industry"],
-                    "Company size": company_info["Company size"],
-                    "Working days": "Monday-Friday"
+                    "Company size": company_info["Company size"]
                 })
 
-        # --- BƯỚC 3: LƯU DỮ LIỆU LOCAL ---
+        # Bước 3 & 4: Lưu local và đẩy lên S3 Bronze
         if results:
             save_or_update_json(results, JSON_PATH)
-        
-        # --- BƯỚC 4: ĐẨY LÊN AWS S3 (Bronze Layer) ---
-        # Đồng bộ cách đặt tên file với các scraper khác
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key = f"vietnamworks/raw/vnw_data_{timestamp}.json"
-        upload_to_s3(JSON_PATH, s3_key)
-        
-        print(" Hoàn tất chu kỳ trích xuất VietnamWorks!")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            s3_key = f"vietnamworks/raw/vnw_data_{timestamp}.json"
+            upload_to_s3(JSON_PATH, s3_key)
 
     finally:
+        # Luôn đóng trình duyệt để tránh tràn RAM
         driver.quit()
-
-    # --- BƯỚC 5: CẬP NHẬT MÃ NGUỒN (Code Only) ---
-    auto_git_push_code_only(f"Update scraper VietnamWorks: {timestamp}")
-
-def auto_git_push_code_only(commit_msg):
-    """Chỉ đẩy file code lên GitHub để giữ Repo sạch sẽ"""
-    try:
-        subprocess.run(["git", "add", "vietnamworks_scraper.py"], check=True)
-        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
-        subprocess.run(["git", "push", "origin", "main"], check=True)
-        print(" Đã cập nhật mã nguồn lên GitHub.")
-    except Exception as e:
-        print(f" Git Push thất bại (Có thể không có thay đổi code): {e}")
+        # Chạy Git Push nếu đang ở Local
+        auto_git_push_code_only(f"Update scraper: {datetime.now()}")
 
 if __name__ == "__main__":
-    main()
+    run_scraper()
