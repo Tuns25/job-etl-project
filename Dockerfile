@@ -1,6 +1,7 @@
+# Sử dụng Amazon Linux 2 làm nền tảng (ổn định hơn cho việc cài Chromium)
 FROM public.ecr.aws/lambda/python:3.11
 
-# 1. Cài đặt các thư viện hệ thống và Chromium
+# 1. Cài đặt các thư viện hệ thống cơ bản
 RUN yum install -y atk cups-libs gtk3 libXcomposite alsa-lib \
     libXcursor libXdamage libXext libXi libXrandr libXscrnsaver \
     utils-linux-ng mesa-libgbm libgbm libwayland-client libwayland-server \
@@ -8,10 +9,11 @@ RUN yum install -y atk cups-libs gtk3 libXcomposite alsa-lib \
     libX11-xcb pango cario libXft-devel \
     vulkan-loader xorg-x11-server-Xvfb xorg-x11-xauth dbus-glib dbus-glib-devel nss nspr gzip tar unzip
 
-# 2. Cài đặt Chromium trực tiếp từ kho ổn định
-RUN yum install -y chromium
+# 2. Cài đặt Chromium từ kho EPEL (Kho mở rộng của Fedora cho doanh nghiệp)
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
+    yum install -y chromium
 
-# 3. Copy requirements và cài đặt thư viện Python
+# 3. Copy và cài đặt thư viện Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
