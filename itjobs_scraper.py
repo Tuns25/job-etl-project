@@ -5,6 +5,7 @@ import os
 import subprocess
 from dotenv import load_dotenv
 import undetected_chromedriver as uc
+from utils import init_uc_driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -27,7 +28,7 @@ def upload_to_s3(file_name, s3_path):
         print(f"Lỗi tải lên S3: {e}")
 BASE_URL = "https://www.itjobs.com.vn"
 START_URL = "https://www.itjobs.com.vn/en"
-MAX_JOBS = 5
+MAX_JOBS = 1000
 PAGE_LOAD_DELAY = 3
 SHOWMORE_WAIT = 3
 DETAIL_PAGE_INITIAL_WAIT = 2
@@ -35,16 +36,6 @@ DETAIL_PAGE_EXTRA_WAIT = 2
 RETRY_DETAIL = 2
 SAVE_PATH = "itjobs_data.json"
 SAVE_EVERY = 100
-def init_uc_driver(headless=False):
-    options = uc.ChromeOptions()
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    driver = uc.Chrome(options=options, version_main=146)
-    driver.set_window_size(1280, 900)
-    return driver
 def safe_get_text(driver, by, selector, timeout=5):
     try:
         el = WebDriverWait(driver, timeout).until(
@@ -144,42 +135,56 @@ def save_or_update_json(new_data, file_path=SAVE_PATH):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(updated, f, ensure_ascii=False, indent=2)
     print(f"Đã cập nhật {file_path}: tổng {len(updated)} job.")
-def main():
-    driver = init_uc_driver(headless=False)
+def run_scraper():
+    # 1. Tự động nhận diện môi trường: Cloud (ẩn) vs Local (hiện)
+    is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
+    driver = init_uc_driver(headless=is_cloud)
+    
     try:
-        print("Đang bắt đầu quy trình Extract: ITJobs...")
-        job_urls = get_job_urls(driver, START_URL, max_jobs=MAX_JOBS)
+        print(f"--- 🕵️ Bắt đầu quy trình ITJobs (Chế độ: {'Cloud' if is_cloud else 'Local'}) ---")
+        
+        # 2. Giới hạn số lượng job khi chạy trên Cloud để tránh Lambda bị Timeout (15 phút)
+        limit = 50 if is_cloud else MAX_JOBS
+        job_urls = get_job_urls(driver, START_URL, max_jobs=limit)
+        
         new_jobs = []
         for idx, job_url in enumerate(job_urls):
             print(f"[{idx+1}/{len(job_urls)}] {job_url}")
             job_data = scrape_job_details(driver, job_url)
             new_jobs.append(job_data)
         
-        # 1. Lưu bản dự phòng tại máy local
-        has_new_data = False
+        # 3. Lưu bản dự phòng và đẩy lên S3 Bronze Layer
         if new_jobs:
-            has_new_data = save_or_update_json(new_jobs)
-        
-        # 2. GIAI ĐOẠN NÂNG CAO: Đẩy lên Cloud (Bronze Layer)
-        # Chúng ta đặt tên file kèm ngày tháng để dễ quản lý/kiểm toán sau này
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key = f"itjobs/raw/itjobs_data_{timestamp}.json"
-        
-        upload_to_s3(SAVE_PATH, s3_key)
-        
-        print(" Hoàn tất chu kỳ ETL cho ITJobs!")
+            save_or_update_json(new_jobs) # Hàm này của bạn đã có logic gộp file
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            s3_key = f"itjobs/raw/itjobs_data_{timestamp}.json"
+            upload_to_s3(SAVE_PATH, s3_key)
+            
+            print(f"✅ Hoàn tất đẩy dữ liệu ITJobs lên S3: {s3_key}")
+
+    except Exception as e:
+        print(f"💥 Lỗi thực thi ITJobs Scraper: {e}")
 
     finally:
+        # 4. LUÔN LUÔN đóng trình duyệt để giải phóng tài nguyên
         driver.quit()
 
-    # PHẦN GIT PUSH: Chỉ giữ lại để lưu CODE, không lưu DATA JSON
-    # Bạn nên tạo file .gitignore và thêm dòng itjobs_data.json vào đó
-    repo_path = os.path.dirname(os.path.abspath(__file__))
-    print("\n Đang cập nhật mã nguồn lên GitHub (Code only)...")
-    import subprocess
-    subprocess.run(["git", "add", "itjobs_scraper.py"], cwd=repo_path)
-    subprocess.run(["git", "commit", "-m", f"update scraper logic {datetime.now()}"], cwd=repo_path)
-    subprocess.run(["git", "push", "origin", "main"], cwd=repo_path)
+    # 5. PHẦN GIT PUSH: Chỉ chạy ở Local, Cloud sẽ bỏ qua
+    if not is_cloud:
+        auto_git_push_code_only(f"update scraper ITJobs logic {datetime.now()}")
+
+def auto_git_push_code_only(commit_msg):
+    """Hàm bổ trợ đẩy code lên GitHub ở máy Local"""
+    try:
+        repo_path = os.path.dirname(os.path.abspath(__file__))
+        print("\n🚀 Đang cập nhật mã nguồn lên GitHub...")
+        subprocess.run(["git", "add", "itjobs_scraper.py"], cwd=repo_path, check=False)
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_path, check=False)
+        subprocess.run(["git", "push", "origin", "main"], cwd=repo_path, check=False)
+    except Exception as e:
+        print(f"⚠️ Bỏ qua Git Push (Local check): {e}")
 
 if __name__ == "__main__":
-    main()
+    # Khi bạn nhấn Run trực tiếp file này bằng VS Code
+    run_scraper()

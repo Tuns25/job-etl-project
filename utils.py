@@ -23,20 +23,16 @@ def init_uc_driver(headless=True):
     is_cloud = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
 
     if is_cloud:
-        # Cấu hình BẮT BUỘC cho môi trường Cloud
-        options.add_argument('--headless')
-        # Trỏ đúng vào file đã giải nén trong Dockerfile
-        options.binary_location = '/opt/headless-chromium'
+        options.add_argument('--headless=new') # Dùng mode headless mới
+        # Đường dẫn sau khi giải nén từ bản tải phía trên
+        options.binary_location = '/opt/bin/chromium'
         
-        # Lambda chỉ cho phép ghi vào /tmp
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--user-data-dir=/tmp/user-data')
-        options.add_argument('--data-path=/tmp/data-path')
-        options.add_argument('--homedir=/tmp')
-        options.add_argument('--disk-cache-dir=/tmp/cache-dir')
         
         driver = uc.Chrome(
             options=options,
-            # SỬA DÒNG NÀY: Trỏ vào /opt/chromedriver thay vì /usr/bin/
             driver_executable_path="/opt/chromedriver",
             version_main=119
         )
