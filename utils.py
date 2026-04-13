@@ -25,7 +25,8 @@ def init_uc_driver(headless=True):
     if is_cloud:
         # Cấu hình BẮT BUỘC cho môi trường Cloud
         options.add_argument('--headless')
-        options.binary_location = "/usr/bin/chromium-browser"
+        # Trỏ đúng vào file đã giải nén trong Dockerfile
+        options.binary_location = '/opt/headless-chromium'
         
         # Lambda chỉ cho phép ghi vào /tmp
         options.add_argument('--user-data-dir=/tmp/user-data')
@@ -35,7 +36,8 @@ def init_uc_driver(headless=True):
         
         driver = uc.Chrome(
             options=options,
-            driver_executable_path="/usr/bin/chromedriver",
+            # SỬA DÒNG NÀY: Trỏ vào /opt/chromedriver thay vì /usr/bin/
+            driver_executable_path="/opt/chromedriver",
             version_main=119
         )
     else:
