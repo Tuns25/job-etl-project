@@ -1,56 +1,55 @@
-FROM public.ecr.aws/lambda/python:3.11
+# Base image
+FROM python:3.10-slim
 
-# 1. Cài đặt các thư viện hệ thống cho Chrome và công cụ Build cho Python
-# Thêm gcc, gcc-c++ và python3-devel để sửa lỗi build NumPy/Pandas
-RUN yum update -y && yum install -y \
+# ===== 1. Cài thư viện hệ thống =====
+RUN apt-get update && apt-get install -y \
+    wget \
     unzip \
-    atk \
-    cups-libs \
-    gtk3 \
-    libXcomposite \
-    alsa-lib \
-    libXcursor \
-    libXdamage \
-    libXext \
-    libXi \
-    libXrandr \
-    libXscrnsaver \
-    mesa-libgbm \
-    libgbm \
-    pango \
-    cairo \
-    nss \
-    nspr \
-    vulkan-loader \
-    xdg-utils \
-    libX11-xcb \
-    gcc \
-    gcc-c++ \
-    python3-devel \
-    && yum clean all
+    curl \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libglib2.0-0 \
+    libnss3 \
+    libgconf-2-4 \
+    libfontconfig1 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxi6 \
+    libxtst6 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libgbm1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
 
-# 2. Tải bản Chrome Headless Shell và Driver (Phiên bản ổn định)
-RUN curl -Lo /tmp/chrome-headless-shell.zip https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/linux64/chrome-headless-shell-linux64.zip && \
-    unzip /tmp/chrome-headless-shell.zip -d /opt/ && \
-    curl -Lo /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/linux64/chromedriver-linux64.zip && \
-    unzip /tmp/chromedriver.zip -d /opt/ && \
-    rm /tmp/chrome-headless-shell.zip /tmp/chromedriver.zip
+# ===== 2. Cài Chrome headless =====
+RUN curl -Lo /tmp/chrome.zip https://storage.googleapis.com/chrome-for-testing-public/121.0.6167.85/linux64/chrome-headless-shell-linux64.zip \
+    && unzip /tmp/chrome.zip -d /opt/ \
+    && rm /tmp/chrome.zip
 
-# 3. Cài đặt thư viện Python
-# Bước này cực kỳ quan trọng: Nâng cấp pip/setuptools trước khi cài requirements
+# ===== 3. Cài Chromedriver =====
+RUN curl -Lo /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/121.0.6167.85/linux64/chromedriver-linux64.zip \
+    && unzip /tmp/chromedriver.zip -d /opt/ \
+    && rm /tmp/chromedriver.zip
+
+# ===== 4. Set quyền =====
+RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell
+RUN chmod +x /opt/chromedriver-linux64/chromedriver
+
+# ===== 5. Biến môi trường =====
+ENV PATH="/opt/chromedriver-linux64:$PATH"
+
+# ===== 6. Cài Python packages =====
+WORKDIR /app
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# 4. Copy mã nguồn vào thư mục task của Lambda
-COPY . ${LAMBDA_TASK_ROOT}
+# ===== 7. Copy source code =====
+COPY . .
 
-# 5. Cấp quyền thực thi cho Chrome và Driver (Dọn dẹp lại lệnh chmod)
-RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell /opt/chromedriver-linux64/chromedriver
-
-# 6. Biến môi trường để Selenium biết đường dẫn (Tùy chọn nhưng nên có)
-ENV CHROME_PATH=/opt/chrome-headless-shell-linux64/chrome-headless-shell
-ENV CHROMEDRIVER_PATH=/opt/chromedriver-linux64/chromedriver
-
-# 7. Khởi chạy
-CMD [ "lambda_function.lambda_handler" ]
+# ===== 8. Run app =====
+CMD ["python", "main.py"]

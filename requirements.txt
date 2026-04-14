@@ -3,3 +3,6 @@ boto3
 selenium
 undetected-chromedriver
 pandas
+numpy==1.26.4
+selenium==4.18.1
+pandas==2.1.4
