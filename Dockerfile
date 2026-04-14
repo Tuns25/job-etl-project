@@ -1,4 +1,3 @@
-# Base image
 FROM python:3.10-slim
 
 # ===== 1. Cài thư viện hệ thống =====
@@ -11,7 +10,6 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     libglib2.0-0 \
     libnss3 \
-    libgconf-2-4 \
     libfontconfig1 \
     libx11-6 \
     libxext6 \
@@ -35,21 +33,19 @@ RUN curl -Lo /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-tes
     && rm /tmp/chromedriver.zip
 
 # ===== 4. Set quyền =====
-RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell
-RUN chmod +x /opt/chromedriver-linux64/chromedriver
+RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell \
+    && chmod +x /opt/chromedriver-linux64/chromedriver
 
-# ===== 5. Biến môi trường =====
+# ===== 5. ENV =====
 ENV PATH="/opt/chromedriver-linux64:$PATH"
 
-# ===== 6. Cài Python packages =====
+# ===== 6. Python =====
 WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# ===== 7. Copy source code =====
+# ===== 7. Code =====
 COPY . .
 
-# ===== 8. Run app =====
 CMD ["python", "main.py"]
