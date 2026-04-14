@@ -1,28 +1,50 @@
-# Sử dụng Image được tối ưu sẵn cho Lambda + Selenium + Chrome
-# Đây là Image cực kỳ nổi tiếng của umihico, giúp bạn bỏ qua bước cài Chrome thủ công
 FROM public.ecr.aws/lambda/python:3.11
 
-# 1. Cài đặt các thư viện hỗ trợ cần thiết
-RUN yum install -y atk cups-libs gtk3 libXcomposite alsa-lib \
-    libXcursor libXdamage libXext libXi libXrandr libXscrnsaver \
-    utils-linux-ng mesa-libgbm libgbm libwayland-client libwayland-server \
-    adwaita-cursor-theme adwaita-icon-theme hicolor-icon-theme \
-    libX11-xcb pango cario libXft-devel \
-    vulkan-loader xorg-x11-server-Xvfb xorg-x11-xauth dbus-glib dbus-glib-devel nss nspr unzip
+# 1. Cài đặt các thư viện hệ thống cần thiết cho Chrome (Amazon Linux 2023)
+RUN yum install -y \
+    unzip \
+    atk \
+    cups-libs \
+    gtk3 \
+    libXcomposite \
+    alsa-lib \
+    libXcursor \
+    libXdamage \
+    libXext \
+    libXi \
+    libXrandr \
+    libXscrnsaver \
+    mesa-libgbm \
+    libgbm \
+    pango \
+    cairo \
+    nss \
+    nspr \
+    vulkan-loader \
+    xdg-utils \
+    libX11-xcb
 
-# 2. Tải bản Chrome và Driver được build riêng cho Lambda (không lỗi yum)
-RUN curl -Lo /tmp/chrome-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome/119.0.6045.105/linux64/chrome-linux64.zip && \
-    unzip /tmp/chrome-linux64.zip -d /opt/ && \
-    curl -Lo /tmp/chromedriver-linux64.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome/119.0.6045.105/linux64/chromedriver-linux64.zip && \
-    unzip /tmp/chromedriver-linux64.zip -d /opt/ && \
-    rm /tmp/chrome-linux64.zip /tmp/chromedriver-linux64.zip
+# 2. Cài đặt Chrome & Driver (Sử dụng bản build ổn định cho Lambda)
+# Thay vì các bản cũ, chúng ta cài bản Chrome Headless Shell hiện đại
+# 2. Tải bản Chrome Headless Shell và Driver (Phiên bản mới, link trực tiếp từ Google)
+RUN curl -Lo /tmp/chrome-headless-shell.zip https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/linux64/chrome-headless-shell-linux64.zip && \
+    unzip /tmp/chrome-headless-shell.zip -d /opt/ && \
+    curl -Lo /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/linux64/chromedriver-linux64.zip && \
+    unzip /tmp/chromedriver.zip -d /opt/ && \
+    rm /tmp/chrome-headless-shell.zip /tmp/chromedriver.zip
+
+# Cấp quyền thực thi
+RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell /opt/chromedriver-linux64/chromedriver
 
 # 3. Cài đặt thư viện Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Copy mã nguồn
+# 4. Copy mã nguồn (bao gồm utils.py, itviec_scraper.py...)
 COPY . ${LAMBDA_TASK_ROOT}
 
-# 5. Khởi chạy
+# 5. Cấp quyền thực thi cho Chrome/Driver
+RUN chmod +x /opt/chrome-headless-shell-linux64/chrome-headless-shell /opt/chromedriver-linux64/chromedriver
+
+# 6. Khởi chạy
 CMD [ "lambda_function.lambda_handler" ]
